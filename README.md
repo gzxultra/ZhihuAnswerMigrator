@@ -1,6 +1,8 @@
 # Zhihu answer migrator
 Author: gzxultra
+
 Date:   02/15/2016
+
 This is a  tool, by which, you can easily migrate your answers from Zhihu to you jekyll blog.
 
 - [x] crawl answers by given url from Zhihu, save them in the form of html.
@@ -15,7 +17,9 @@ This is a  tool, by which, you can easily migrate your answers from Zhihu to you
 
 
 The MIT License (MIT)
+
 Copyright (c) 2016 夏天的风铃_
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
