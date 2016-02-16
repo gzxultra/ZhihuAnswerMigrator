@@ -9,16 +9,18 @@ import re
 import codecs
 from urllib import request
 from bs4 import BeautifulSoup
-from html2markdown import Html2MarkdownParser
+# import html2text
 
 '''
+Zhihu spider
+author: gzxultra
+warning:
 Before you run this script, please make sure that BeautifulSoup4 and Python3 were already installed.
 '''
 
 # please configure the collection you want to crawl.
 # url = 'https://www.zhihu.com/collection/43668857'
 url = 'https://www.zhihu.com/collection/68914551'
-
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPO_DIR = os.path.join(BASE_DIR, '顾志翔的编程收藏夹')
 
@@ -97,25 +99,54 @@ class ZhihuSpider(SpiderHTML):
             if upvoted < 100:
                 continue
             author_info = answer.find(
-                'div', class_='zm-item-answer-author-info')  # 获取作者信息
+                'div', class_='zm-item-answer-author-info')
             author = {'introduction': '', 'link': ''}
             try:
                 author['name'] = author_info.find(
-                    'a', class_='author-link').string  # 获得作者的名字
+                    'a', class_='author-link').string
                 author['introduction'] = str(
-                    author_info.find('span', class_='bio')['title'])  # 获得作者的简介
+                    author_info.find('span', class_='bio')['title'])
             except AttributeError:
-                author['name'] = 'anonymous_author: ' + str(anonymous_id)
+                author['name'] = '匿名用户：' + str(anonymous_id)
             # no introduction
             except TypeError:
                 pass
 
-            self._convertToMarkdown(self, answer)
+            try:
+                author['link'] = author_info.find(
+                    'a', class_='author-link')['href']
+            except TypeError:
+                pass
+
+            # author info
+            file_name = os.path.join(
+                REPO_DIR, question_title_html, 'info', author['name'] + '_info.txt')
+            if os.path.exists(file_name):
+                continue
+            self.save_text(
+                file_name, '{introduction}\r\n{link}'.format(**author))
+
+            # answer text only
+            print('正在获取用户`{name}`的答案'.format(**author))
+            answerContent = answer.find(
+                'div', class_='zm-editable-content clearfix')
+            if answerContent is None:
+                continue
+            else:
+                self._getTextFromAnswer(
+                    answerContent, question_title_html, **author)
+
+            # answer image only
+            imgs = answerContent.find_all('img')
+            if len(imgs) == 0:
+                pass
+            else:
+                self._getImgFromAnswer(imgs, question_title_html, **author)
 
     def _getImgFromAnswer(self, imgs, question_title_html, **author):
         i = 0
         for img in imgs:
-            if 'inline-image' in img['class']:  # 不抓取知乎的小图
+            if 'inline-image' in img['class']:
                 continue
             i = i + 1
             imgUrl = img['src']
@@ -132,11 +163,11 @@ class ZhihuSpider(SpiderHTML):
                 pass
             except http.client.IncompleteRead:
                 pass
-    # 收录文字
 
     def _getTextFromAnswer(self, answerContent, question_title_html, **author):
+        extension = '.txt'
         path_name = os.path.join(
-            REPO_DIR, question_title_html, author['name'] + '.txt')
+            REPO_DIR, question_title_html, author['name'] + extension)
         tmp = answerContent.get_text()
         tmp2 = re.sub('<>', '', tmp)
         answer_text = tmp2.strip()
@@ -151,26 +182,6 @@ class ZhihuSpider(SpiderHTML):
             pass
         except http.client.IncompleteRead:
             pass
-
-    def _convertToMarkdown(self, answer):
-        p = Html2MarkdownParser()
-        buffer = answer()
-        p.feed(buffer)
-        p.close()
-        path_name = os.path.join(
-            REPO_DIR, question_title_html, author['name'] + '.markdown')
-        answer_output = re.sub('<>', '', p.get_markdown())
-        try:
-            self.save_text(path_name, answer_output)
-        except ValueError:
-            pass
-        except urllib.error.HTTPError as e:
-            pass
-        except KeyError as e:
-            pass
-        except http.client.IncompleteRead:
-            pass
-
 
 if __name__ == '__main__':
     pageBegin, limit, paramsNum = 1, 0, len(sys.argv)
@@ -190,33 +201,3 @@ if __name__ == '__main__':
     spider = ZhihuSpider(pageBegin, pageEnd, url)
     spider.run()
     print("Mission Completed.")
-
-'''
-            try:
-                author['link'] = author_info.find(
-                    'a', class_='author-link')['href']
-            except TypeError:
-                pass
-
-            file_name = os.path.join(
-                REPO_DIR, question_title_html, 'info', author['name'] + '_info.txt')
-            if os.path.exists(file_name):
-                continue
-
-            self.save_text(
-                file_name, '{introduction}\r\n{link}'.format(**author))  # 保存作者的信息
-            print('正在获取用户`{name}`的答案'.format(**author))
-            answerContent = answer.find(
-                'div', class_='zm-editable-content clearfix')
-            if answerContent is None:
-                continue
-            else:
-                self._getTextFromAnswer(
-                    answerContent, question_title_html, **author)
-
-            imgs = answerContent.find_all('img')
-            if len(imgs) == 0:  # 答案没有上图
-                pass
-            else:
-                self._getImgFromAnswer(imgs, question_title_html, **author)
-'''
